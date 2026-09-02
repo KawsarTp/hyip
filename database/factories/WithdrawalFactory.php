@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\WithdrawalStatus;
 use App\Models\Withdrawal;
+use App\WithdrawalStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 

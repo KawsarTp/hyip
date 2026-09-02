@@ -32,7 +32,7 @@ class WithdrawalMethodRequest extends FormRequest
             'minimum_amount' => ['required', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
             'maximum_amount' => ['nullable', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
             'fee_fixed' => ['required', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
-            'fee_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'fee_percent' => ['required', 'regex:/^\d{1,3}(\.\d{1,2})?$/', 'numeric', 'min:0', 'max:100'],
             'is_enabled' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:10000'],
         ];
