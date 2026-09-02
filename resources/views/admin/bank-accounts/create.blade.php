@@ -1,0 +1,3 @@
+@component('layouts.shell', ['admin' => true, 'active' => 'payment-gateways', 'title' => 'Add bank account'])
+    <div class="mx-auto max-w-[900px]"><a href="{{ route('admin.bank-accounts.index') }}" class="text-xs font-semibold text-[#7668f6]">← Back to bank accounts</a><section class="app-surface mt-5 rounded-[24px] border border-[#e2e7ef] bg-white p-6 sm:p-8"><p class="text-[10px] font-semibold uppercase tracking-[.18em] text-[#9aa5b7]">Receiving account</p><h2 class="display-copy mt-3 text-3xl font-semibold">Add bank instructions.</h2>@include('admin.bank-accounts.form', ['action' => route('admin.bank-accounts.store'), 'method' => 'post'])</section></div>
+@endcomponent

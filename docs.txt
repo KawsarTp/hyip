@@ -1,0 +1,532 @@
+# Real-World HYIP / Investment Platform Specification
+
+> This file is a product and implementation specification. The product must not be launched as an unlicensed investment, deposit-taking, money-transmission, or securities business. Before development goes live, obtain legal advice for every target jurisdiction, complete licensing/registration where required, implement KYC/AML/sanctions controls, and publish accurate risk disclosures. Never advertise guaranteed returns or use new customer deposits to pay earlier customers.
+
+## 1. Product definition
+
+Build a web-based investment platform with separate user and administration modules. Users can register, pass identity verification, fund an account, select an investment plan, see an auditable return schedule, request withdrawals, and earn referral rewards where legally allowed. Administrators can configure plans, operate payments, review compliance, run the return engine, resolve exceptions, and produce financial/audit reports.
+
+The platform must be ledger-first: every balance change is an immutable, traceable ledger entry. Displayed balances are projections or cached totals; the ledger and reconciled payment records are the source of truth.
+
+### Product principles
+
+1. Use “projected return”, “target return”, or “profit share” language unless a licensed product legally supports a fixed obligation.
+2. Do not allow negative balances, silent balance edits, backdated ROI, duplicate webhooks, or unapproved manual adjustments.
+3. Separate customer money, company money, referral liabilities, fees, and operational expenses in the accounting model.
+4. Make fees, lock periods, risks, calculation methods, and withdrawal conditions visible before confirmation.
+5. Require maker-checker approval for high-risk financial and administrative actions.
+6. Preserve an audit trail for every user, payment, plan, investment, calculation, approval, and configuration change.
+
+## 2. User roles and access
+
+### Public visitor
+
+- View landing page, investment plan summaries, risk disclosure, fees, FAQs, legal pages, contact page, and supported payment methods.
+- Start registration but cannot view private balances or plan details requiring authentication.
+
+### Registered user
+
+- Complete profile and security setup.
+- View public plans and submit deposits/investments subject to verification and eligibility.
+- View wallet balances, ledger, ROI/profit-share history, referrals, notifications, statements, and support tickets.
+
+### Verified user
+
+- Access features allowed by jurisdiction, KYC tier, account risk rating, and limits.
+- Submit deposits, create investments, request payouts, and receive eligible referral rewards.
+
+### Partner/referral user
+
+- A verified user with an approved referral agreement and partner-specific tracking rules.
+- May access referral links, attribution, qualified referral activity, commission statements, and marketing assets.
+
+### Administrator roles
+
+Use least privilege and never share accounts.
+
+- `Super Admin`: system configuration and role management; cannot bypass audit controls.
+- `Finance Admin`: deposits, payouts, reconciliation, fees, ledger review, financial reports.
+- `Compliance Officer`: KYC/AML, sanctions, enhanced due diligence, freezes, suspicious activity workflow.
+- `Investment Manager`: plans, allocations, return schedules, investment lifecycle, performance records.
+- `Support Agent`: users, tickets, safe profile corrections, communication; no direct financial approval.
+- `Content Manager`: CMS pages, FAQs, banners, legal copy drafts; publishing legal copy requires approval.
+- `Auditor/Read Only`: reports, ledger, logs, and exports without mutation access.
+
+Implement permissions as named abilities, not as hard-coded role checks. Sensitive permissions include `approve-payout`, `approve-ledger-adjustment`, `publish-legal-content`, `freeze-account`, `manage-payment-credentials`, and `manage-roles`.
+
+## 3. Public website module
+
+### Pages
+
+- Home: value proposition, how it works, risk warning, regulated-entity identity, supported regions, and calls to action.
+- Plans: comparison of projected return, term, minimum/maximum, liquidity, fees, calculation basis, and risk level.
+- Plan detail: complete terms, sample calculation, early exit rules, allocation/use-of-funds description, and acknowledgement checkbox.
+- How it works: registration, verification, funding, investing, return calculation, and withdrawal flow.
+- About/company: legal entity, directors where required, registered address, licenses, and contact details.
+- Fees: deposit fees, withdrawal fees, management/performance fees, conversion spreads, inactivity fees, and taxes.
+- FAQ, Help Center, Contact, Terms of Service, Privacy Policy, Cookie Policy, Risk Disclosure, AML/KYC Policy, Referral Terms, and Complaints Policy.
+
+### Public UI instructions
+
+- Present risk and liquidity limitations above the fold; do not use misleading countdown timers or urgency copy.
+- Every plan card must show `Projected`, `Term`, `Minimum`, `Fees`, `Liquidity`, and `Risk` labels.
+- Provide a currency selector, locale selector, accessible contrast, keyboard navigation, and mobile-first layouts.
+- Use clear states: loading, empty, unavailable in region, verification required, maintenance, and error.
+- Legal and financial claims must be CMS-versioned and approval-gated.
+
+## 4. Authentication and account security
+
+### User functionality
+
+- Registration with name, email/phone, password, country, terms acceptance, and referral code.
+- Email/phone verification, login, logout, remember-device, password reset, and session management.
+- Optional or mandatory MFA based on jurisdiction, account tier, and action risk; require step-up MFA for payout and security changes.
+- Device/session list, login history, suspicious-login alerts, trusted device expiry, and account recovery.
+- Anti-bot protection, rate limiting, breached-password checks, and lockout with safe recovery.
+- Account freeze, self-exclusion, close-account request, data export, and deletion workflow subject to financial record retention.
+
+### Admin functionality
+
+- Admin SSO or MFA, IP/device policy, session revocation, role assignment, and access review.
+- Separate admin domain and rate limits.
+- No password or MFA reset without a recorded reason and appropriate approval.
+
+## 5. Onboarding, KYC, AML, and risk controls
+
+- Collect legal name, date of birth, nationality, residential address, tax residency, occupation/business, source of funds, and beneficial owner data where applicable.
+- Document verification: identity document front/back, selfie/liveness if required, proof of address, business documents for entities.
+- Consent records, privacy purpose, data retention date, provider reference, decision reason, and manual review notes.
+- KYC statuses: `not_started`, `pending`, `in_review`, `verified`, `rejected`, `expired`, `resubmission_required`.
+- KYC tiers define deposit, investment, and payout limits; never use a higher limit before verification passes.
+- Screen users, beneficiaries, wallets, and counterparties against sanctions/PEP/adverse-media providers as required.
+- Transaction monitoring rules: velocity, structuring, unusual country/device, rapid deposit-to-withdrawal, multiple accounts, chargeback risk, and referral abuse.
+- Case management: alert, assign, investigate, request information, escalate, close, and record suspicious activity decision.
+- Account risk states: `normal`, `review`, `restricted`, `frozen`, `closed`.
+- Compliance staff can place holds; releasing a compliance hold requires reason and audit event.
+
+## 6. User dashboard module
+
+### Dashboard cards
+
+- Available balance.
+- Invested principal.
+- Pending deposits.
+- Pending payouts.
+- Accrued and paid returns.
+- Referral balance and pending referral rewards.
+- Active investments with next calculation/event date.
+- Verification status, account alerts, and required actions.
+
+### Dashboard behavior
+
+- Date-range and currency filters must apply consistently to cards, charts, and tables.
+- Show available, pending, locked, and total balances separately.
+- Never label an unpaid or projected amount as “cash balance”.
+- Show a ledger link beside every financial summary.
+- Provide export to CSV/PDF for permitted statements.
+
+## 7. Wallet and double-entry ledger module
+
+### Wallets
+
+Create separate wallets or sub-ledgers for each user and currency:
+
+- Available wallet: withdrawable funds.
+- Pending wallet: deposits or credits awaiting confirmation.
+- Locked wallet: funds committed to an active plan.
+- Accrued return wallet: calculated but not yet released return.
+- Referral wallet: earned, pending, held, or clawed-back referral reward.
+- Fee/tax wallet: amounts reserved for platform fees or withholding.
+
+### Ledger rules
+
+- Use integer minor units or fixed decimal arithmetic; never use floating point for money.
+- Each transaction has a unique idempotency key, external reference, actor, reason, currency, amount, status, and timestamps.
+- Financial entries are append-only. Corrections are compensating entries, never edits or deletes.
+- Every journal must balance: total debits equal total credits.
+- Keep a separate immutable event log for state transitions.
+- Reconcile wallet totals against ledger totals on a scheduled basis and alert on any mismatch.
+- Manual adjustments require a reason, attachment/reference, maker approval, and checker approval.
+- Store exchange rate, rate source, spread, and quote expiry for every conversion.
+
+### Financial transaction statuses
+
+Use a common state machine: `created`, `pending`, `processing`, `completed`, `failed`, `cancelled`, `reversed`, `refunded`, `on_hold`, `expired`.
+
+## 8. Investment plans and ROI/return engine
+
+### Plan fields
+
+- Name, slug, description, currency, category, risk rating, and target audience.
+- Minimum/maximum investment, total capacity, per-user capacity, and availability by country/KYC tier.
+- Term length, start/end rules, lock period, grace period, early-exit policy, and maturity behavior.
+- Return model: fixed schedule, variable performance, profit share, or capital appreciation.
+- Rate type: percentage, amount, benchmark-linked, or administrator-approved performance result.
+- Calculation frequency: daily, weekly, monthly, milestone, or maturity.
+- Day-count basis: 360, 365, or calendar-day basis; timezone and cut-off time.
+- Compounding setting, payout destination, reinvestment option, fees, taxes, and rounding rule.
+- Draft/published/paused/retired status, version, effective date, and approval history.
+
+### Plan safety rules
+
+- A published plan is versioned. Existing investments retain the version accepted at purchase.
+- Plan changes never silently alter active investments; changes require a new version and explicit legal/finance approval.
+- Capacity, regional restrictions, account limits, and risk acknowledgement are checked transactionally before purchase.
+- A plan cannot be published without complete terms, risk disclosure, calculation example, and approval records.
+
+### ROI/return calculation modes
+
+The engine must support a configurable, auditable mode rather than one hard-coded promise.
+
+#### Simple periodic calculation
+
+For a documented annual projected rate:
+
+```text
+period_return = eligible_principal × annual_rate × eligible_days ÷ day_count_basis
+```
+
+#### Simple term calculation
+
+```text
+projected_term_return = eligible_principal × term_rate
+```
+
+#### Compound calculation
+
+```text
+period_return = opening_principal × ((1 + periodic_rate) ^ periods) - opening_principal
+```
+
+Compounding must only occur when the user explicitly opts in and the plan terms allow it.
+
+#### Performance/profit-share calculation
+
+Record the underlying performance period, verified gross result, eligible expenses, net result, participation percentage, and allocation method. A performance return cannot be entered without an approved performance record.
+
+### ROI engine behavior
+
+- Calculate only from funded, settled, eligible principal.
+- Exclude cancelled, refunded, charged-back, or compliance-held amounts according to plan rules.
+- Support partial periods, deposits after the cut-off, maturity, early exit, pauses, holidays, and timezone boundaries.
+- Use a calculation snapshot containing plan version, principal, rate, dates, formula version, and rounding result.
+- Make each calculation idempotent by investment and period; rerunning a job must not duplicate credits.
+- Generate a preview before posting and require approval for manual/reprocessed runs.
+- Record `accrued`, `approved`, `released`, `reinvested`, `withheld`, `reversed`, and `clawed_back` return states.
+- Cap returns only when the plan terms specify a cap; show capped amounts and the reason.
+- Handle negative performance explicitly for performance plans; never silently convert a loss to a positive ROI.
+- Run daily/hourly jobs through queues, with retry, dead-letter handling, and an operations dashboard.
+
+### Investment lifecycle
+
+`draft` → `awaiting_funding` → `active` → `paused`/`matured` → `completed` or `exited` → `cancelled`.
+
+At activation, lock principal and create the investment snapshot. At each return period, calculate, approve if required, post ledger entries, notify the user, and expose the supporting statement. At maturity, unlock principal according to the plan and settle outstanding return/fees.
+
+## 9. Deposit and payment module
+
+### Supported payment rails
+
+Implement only providers approved for the business and jurisdiction. Possible adapters include card, bank transfer, local payment methods, and cryptocurrency. Each adapter must share a common interface while retaining provider-specific metadata.
+
+### Deposit flow
+
+1. User selects currency, payment method, amount, and source-of-funds declaration.
+2. Server validates account status, KYC tier, limits, fees, currency, and risk checks.
+3. Create a pending deposit with an idempotency key and locked quote if conversion applies.
+4. Redirect to hosted checkout or display verified bank/crypto instructions.
+5. Receive and verify a signed webhook or reconcile bank/chain data; never trust the browser redirect as proof of payment.
+6. Apply provider fee, conversion, confirmation/settlement rule, and fraud/chargeback hold.
+7. Post balanced ledger entries and mark the deposit `completed` only after settlement criteria pass.
+8. Send receipt and make the funds available or locked according to policy.
+
+### Deposit functionality
+
+- Minimum/maximum and velocity limits by user, currency, provider, country, and KYC tier.
+- Payment intent creation, checkout expiry, retry, cancellation, refund, chargeback, and partial payment handling.
+- Bank transfer reference generation and unmatched-payment queue.
+- Crypto network selection, address memo/tag, confirmation count, stale deposit handling, and chain-risk screening.
+- Provider webhook signature verification, replay protection, event deduplication, and raw payload retention.
+- Daily reconciliation against provider settlement reports.
+- Admin retry, refund, hold, and manual match actions with permissions and audit trail.
+- Clear user statuses and expected next action for every pending deposit.
+
+## 10. Payout, withdrawal, and redemption module
+
+### User payout flow
+
+1. User adds and verifies a beneficiary, bank account, card, or wallet address.
+2. Server checks KYC, sanctions, destination ownership/allow-list, available balance, plan lock rules, minimum payout, fees, limits, and risk signals.
+3. User sees a quote: gross amount, fee, tax/withholding, exchange rate, net amount, ETA, and cancellation window.
+4. User confirms with password/MFA and receives a payout reference.
+5. Payout enters a compliance/finance hold or maker-checker queue based on thresholds.
+6. Provider sends the payout; webhook and settlement reconciliation update the state.
+7. On success, post the ledger settlement. On failure, release or refund the reserved amount with a compensating journal.
+
+### Payout functionality
+
+- Available-balance reservation prevents double spending during processing.
+- Payout methods, beneficiary verification, allow-list, cooling-off period after changes, and destination limits.
+- Minimum/maximum, daily/monthly, velocity, and jurisdiction-specific limits.
+- Manual approval thresholds, dual approval, payout batching, cut-off times, holidays, and SLA tracking.
+- Payout cancellation only while the provider supports cancellation.
+- Failed, returned, rejected, expired, disputed, and reversed payout handling.
+- Tax withholding/document generation where required.
+- User-facing payout timeline and downloadable receipt.
+- Admin queue filters for age, amount, risk, country, provider, and SLA breach.
+
+## 11. Referral and partner module
+
+### Referral rules
+
+- Generate unique referral code and URL with campaign/UTM attribution.
+- Define attribution window, first-touch/last-touch rule, self-referral prevention, household/device checks, and duplicate-account rules.
+- Commission should be based on a documented qualified event such as settled platform revenue or an approved fee, not simply on recruiting deposits.
+- Configure percentage/fixed reward, currency, maximum, qualification period, clawback period, and eligible plans.
+- Referral reward states: `tracked`, `pending`, `qualified`, `approved`, `credited`, `held`, `clawed_back`, `rejected`.
+- Apply a holding period for refunds, chargebacks, fraud review, and investment cancellation.
+- Show terms and commission calculation to both the referrer and referred user.
+
+### Referral UI
+
+- Referral dashboard with link/code copy button, invite history, qualified count, pending reward, available reward, paid reward, and clawbacks.
+- Conversion funnel by campaign and date; do not expose another user’s private financial data.
+- Referral statement showing event, qualifying condition, gross basis, rate, fee/clawback, and net reward.
+- Admin screens for rules, campaigns, suspicious patterns, approvals, and exports.
+
+## 12. Fees, taxes, and pricing
+
+- Fee types: deposit, withdrawal, conversion spread, management, performance, early exit, inactivity, and network/provider fee.
+- Store fee rule version on every transaction; historical transactions must not change when a fee setting changes.
+- Show gross, fee, tax, and net amounts before confirmation.
+- Support fixed, percentage, tiered, minimum, maximum, and currency-specific fees.
+- Record who approved changes, effective date, and reason.
+- Produce fee revenue, tax liability, and provider-cost reports separately.
+
+## 13. User support and communications
+
+- Help Center categories, searchable articles, plan/fee/withdrawal FAQs, and contact forms.
+- Ticket states: `open`, `waiting_for_user`, `waiting_for_staff`, `escalated`, `resolved`, `closed`.
+- Ticket priority, category, SLA timer, assignment, internal notes, attachments, and complete conversation history.
+- In-app notifications, email, SMS/push where configured, and user preferences.
+- Required notifications: registration, verification result, deposit created/settled/failed, investment activated, return posted, payout requested/approved/failed/completed, security event, account hold, and legal-term update.
+- Templates are versioned, localized, previewable, testable, and approval-gated for financial/legal messages.
+
+## 14. Admin panel modules
+
+### Admin dashboard
+
+- Total registered/verified/active users.
+- Deposits, payouts, fees, invested principal, accrued/paid returns, liabilities, and reconciliation status.
+- Pending KYC, compliance alerts, payout queue, unmatched deposits, failed jobs, webhook failures, and support SLA breaches.
+- Date/currency/region/provider filters, drill-down links, and export permissions.
+- Every KPI must state whether it is settled, pending, accrued, projected, or paid.
+
+### User administration
+
+- Search by user ID, email, phone, legal name, KYC reference, payment reference, wallet, or referral code.
+- View profile, devices, login history, KYC, balances, ledger, investments, deposits, payouts, referrals, tickets, and audit history.
+- Freeze/restrict/unfreeze with reason, expiry, approver, and user notification.
+- Safe profile correction workflow; never edit immutable identity/payment evidence in place.
+
+### Investment operations
+
+- Plan CRUD with draft/review/approve/publish/pause/retire workflow.
+- Plan version diff, capacity, exposure, return schedule, and active investment impact preview.
+- Investment search, activation exception queue, maturity queue, early-exit review, return preview, reprocess, and reversal workflow.
+
+### Payment operations
+
+- Provider credentials reference (secrets must be in a secret manager), method availability, webhook health, settlement batches, reconciliation, refunds, chargebacks, and unmatched transactions.
+- Read-only raw provider payload and normalized event view.
+
+### Finance and accounting
+
+- Chart of accounts, journal viewer, trial balance, wallet reconciliation, fee/tax reports, customer liabilities, provider settlement, and period close.
+- Export immutable, filterable reports with generated-by, time, filters, and checksum metadata.
+
+### Compliance and risk
+
+- KYC review queue, document viewer with access logging, sanctions/PEP results, risk scoring, alert/case management, source-of-funds requests, freezes, and regulatory report exports.
+
+### CMS and configuration
+
+- Pages, FAQs, banners, announcements, translations, email templates, risk disclosures, supported countries, currencies, limits, fees, maintenance mode, and feature flags.
+- Draft, preview, legal review, publish, rollback, and version history.
+
+### RBAC and audit
+
+- Admin users, roles, granular permissions, login policy, access reviews, and API keys.
+- Audit every read of sensitive documents as well as every create/update/delete/approve/reject/export action.
+- Audit records include actor, impersonation status, IP, user agent, request ID, before/after values, reason, timestamp, and affected object.
+
+## 15. UI/UX instructions
+
+### Visual language
+
+- Use a calm financial interface: neutral background, high-contrast text, one primary action color, and semantic colors only for success/warning/danger.
+- Avoid casino-like visuals, fake scarcity, exaggerated profit counters, or return animations that imply certainty.
+- Use consistent cards, data tables, tabs, badges, drawers, confirmation dialogs, and timeline components.
+- Use monospace or tabular numerals for money; always show currency and precision.
+
+### User navigation
+
+Desktop sidebar: Overview, Wallets, Investments, Deposit, Payout, Referrals, Transactions, Statements, Support, Notifications, Profile, Security.
+
+Mobile navigation: Overview, Wallet, Investments, Activity, More. Keep Deposit and Payout visible as primary actions only when the account is eligible.
+
+### Required screens
+
+- Registration/login/MFA/recovery.
+- KYC onboarding with progress indicator and document upload states.
+- Dashboard with balance separation and action-required banners.
+- Plan list, plan comparison, plan detail, risk acknowledgement, and investment confirmation.
+- Deposit method selection, payment instructions/checkout, pending state, receipt, and failure recovery.
+- Wallet/ledger table with filters and transaction detail drawer.
+- Payout beneficiary setup, quote/confirmation, approval pending, timeline, receipt, and failure/retry.
+- Referral dashboard and statement.
+- Profile/security/devices/notifications/consent.
+- Support center, ticket list, ticket detail, and complaint escalation.
+
+### Admin navigation
+
+Overview, Users, KYC/Compliance, Investments, Plans, Deposits, Payouts, Payments/Reconciliation, Ledger, Referrals, Fees/Taxes, Reports, Support, CMS, Notifications, Admin Users/Roles, Audit Logs, System Health.
+
+### Component behavior
+
+- Every table has loading skeleton, empty state, error state, pagination, sorting, filters, and export permission handling.
+- Destructive or irreversible actions require a confirmation modal with exact impact, reason field, and MFA/approval where applicable.
+- Financial actions show a review step and an immutable reference after submission.
+- Do not rely on color alone; use text/icons for status and provide accessible labels.
+- Meet WCAG 2.2 AA targets, support keyboard navigation, responsive layouts, screen readers, reduced motion, and localization expansion.
+- Use server-side validation messages next to fields and preserve user input safely after validation errors.
+
+## 16. Core data model
+
+Recommended entities and important fields:
+
+- `users`: identity, credentials, status, locale, timezone, risk tier, referral attribution, timestamps.
+- `roles`, `permissions`, `role_user`, `permission_role`: RBAC assignments.
+- `user_profiles`: legal, contact, tax, and suitability data.
+- `kyc_profiles`, `kyc_documents`, `kyc_checks`, `compliance_cases`: verification and review history.
+- `sessions`, `user_devices`, `mfa_methods`, `login_attempts`: security records.
+- `currencies`, `exchange_rates`, `payment_providers`, `payment_methods`.
+- `wallets`, `ledger_accounts`, `journal_entries`, `journal_lines`: double-entry accounting.
+- `plans`, `plan_versions`, `plan_approvals`, `plan_limits`.
+- `investments`, `investment_events`, `return_calculations`, `return_periods`.
+- `deposits`, `deposit_events`, `payment_intents`, `provider_webhooks`, `settlements`, `chargebacks`, `refunds`.
+- `beneficiaries`, `payouts`, `payout_events`, `payout_approvals`.
+- `referral_campaigns`, `referral_links`, `referrals`, `referral_commissions`, `referral_clawbacks`.
+- `fee_rules`, `tax_rules`, `fee_allocations`.
+- `notifications`, `notification_templates`, `notification_deliveries`, `user_consents`.
+- `support_tickets`, `support_messages`, `support_attachments`.
+- `cms_pages`, `cms_versions`, `legal_acceptances`.
+- `audit_logs`, `admin_actions`, `idempotency_keys`, `job_runs`, `system_alerts`.
+
+All monetary tables need currency, integer minor-unit amount or fixed decimal amount, status, reference, and timestamps. Add unique constraints for provider event IDs, journal references, idempotency keys, and one return calculation per investment/period/version.
+
+## 17. Laravel implementation guidance
+
+- Use Form Requests for validation, Policies/Gates for authorization, Enums for statuses, Actions/Services for business workflows, Events/Listeners for notifications, Jobs for payment/return processing, and Notifications for user communications.
+- Keep controllers thin. A payout controller should authorize and invoke a payout workflow; it should not contain accounting or provider-specific logic.
+- Define provider adapters behind interfaces such as `PaymentGateway`, `PayoutProvider`, `KycProvider`, and `RateProvider`.
+- Use database transactions and row locks around balance reservation, investment activation, return posting, and payout settlement.
+- Use queues for webhooks, KYC checks, notifications, reconciliation, and ROI processing. Make every job retry-safe and idempotent.
+- Store secrets outside source control. Encrypt sensitive fields and restrict document storage with private disks and signed, expiring URLs.
+- Expose a versioned API if mobile/third-party clients are planned. Use API Resources, request authentication, scopes, rate limits, and webhook signature verification.
+- Use scheduled commands for return periods, reconciliation, stale payment cleanup, report generation, and compliance review reminders.
+- Never use model observers for complex money movement when an explicit, testable application service is clearer.
+
+## 18. Suggested route groups
+
+Public: `/`, `/plans`, `/plans/{plan}`, `/how-it-works`, `/fees`, `/faq`, `/legal/*`.
+
+Auth: `/register`, `/login`, `/verify`, `/password/*`, `/mfa/*`.
+
+User: `/dashboard`, `/kyc`, `/wallet`, `/investments`, `/investments/{investment}`, `/deposits`, `/payouts`, `/beneficiaries`, `/referrals`, `/transactions`, `/statements`, `/support`, `/profile`, `/security`.
+
+Admin: `/admin`, `/admin/users`, `/admin/kyc`, `/admin/plans`, `/admin/investments`, `/admin/deposits`, `/admin/payouts`, `/admin/reconciliation`, `/admin/ledger`, `/admin/referrals`, `/admin/reports`, `/admin/cms`, `/admin/roles`, `/admin/audit`.
+
+Provider endpoints: `/webhooks/{provider}` with signature verification, replay protection, throttling, raw event storage, and no browser authentication dependency.
+
+## 19. Security, privacy, and reliability requirements
+
+- HTTPS everywhere, secure cookies, CSRF protection, strict content security policy, HSTS, secure headers, and dependency scanning.
+- Password hashing with the framework’s secure hasher; MFA for admins and step-up MFA for high-risk user actions.
+- Encrypt PII and payment identifiers at rest; tokenize card data through a PCI-compliant provider and never store CVV.
+- Private document storage, malware scanning, access logging, retention/deletion policy, backup encryption, and tested restore procedures.
+- Rate-limit authentication, KYC uploads, deposits, payouts, referral endpoints, and webhooks.
+- Validate ownership on every object query; protect against IDOR, mass assignment, replay, duplicate submissions, and privilege escalation.
+- Use idempotency keys on all money-moving POST requests.
+- Centralized logs, metrics, tracing, alerts, uptime monitoring, queue monitoring, database backups, and incident runbooks.
+- Define RPO/RTO, disaster recovery region, provider failover, maintenance mode, and customer communication procedure.
+- Do not expose secrets, PII, document URLs, internal risk signals, or stack traces in browser responses or logs.
+
+## 20. Reports and exports
+
+User reports: wallet statement, deposit history, payout history, investment statement, return history, fees, tax summary, referral statement, and annual summary.
+
+Admin reports: customer liabilities, assets/segregation, deposits by method/currency, payouts by status, ROI accrued/paid, plan performance, fee revenue, taxes, referrals, KYC outcomes, AML alerts, chargebacks, reconciliation exceptions, ledger trial balance, and audit activity.
+
+Exports must be permission-controlled, filter-stamped, timezone-aware, currency-aware, generated asynchronously for large datasets, and retained according to policy.
+
+## 21. Testing and acceptance criteria
+
+### Automated tests
+
+- Registration, verification, login, MFA, recovery, and authorization.
+- KYC status transitions, tier limits, account holds, and restricted-country rules.
+- Plan publication/versioning, investment activation, capacity, lock period, maturity, and early exit.
+- ROI formulas for every mode, day-count basis, rounding, partial period, timezone, rerun, pause, reversal, and negative performance.
+- Deposit provider events, duplicate webhooks, partial/refunded/chargeback payments, confirmation thresholds, and reconciliation.
+- Payout reservation, concurrent requests, approval thresholds, failure/reversal, fees, taxes, and beneficiary cooling-off.
+- Double-entry balance invariants, ledger immutability, compensating entries, and idempotency.
+- Referral attribution, qualification, hold period, clawback, self-referral, and duplicate-account controls.
+- Notifications, queue retries, permissions, audit logs, exports, accessibility, and rate limits.
+
+### Launch acceptance checklist
+
+- A verified test user can fund, invest, see a transparent calculation, receive a return entry, and withdraw within documented rules.
+- A duplicate payment webhook and a retried ROI job produce exactly one financial result.
+- Concurrent payout attempts cannot spend the same funds.
+- Every financial result can be traced from provider event to journal to user statement.
+- An admin cannot approve their own high-risk action when maker-checker is required.
+- Reconciliation reports identify all unmatched or mismatched provider records.
+- Plan and legal copy changes show version, approver, effective date, and affected users.
+- KYC failure, account freeze, chargeback, payout failure, and provider outage have tested user/admin states.
+- Backups restore successfully and incident/runbook ownership is documented.
+
+## 22. Delivery phases
+
+### Phase 0: legal and product validation
+
+Confirm legal entity, jurisdictions, license model, custody/accounting model, product classification, risk disclosures, AML program, provider contracts, return funding source, and tax treatment.
+
+### Phase 1: foundation
+
+Authentication, RBAC, user profile, KYC integration, currencies, wallet/ledger, audit logs, public legal pages, and base design system.
+
+### Phase 2: financial operations
+
+Plans, investment lifecycle, deposit adapters, payout adapters, fees, reconciliation, statements, notifications, and ROI engine with test vectors.
+
+### Phase 3: growth and operations
+
+Referrals, support center, CMS workflow, reports, compliance cases, risk rules, provider failover, and admin dashboards.
+
+### Phase 4: production readiness
+
+Security review, penetration test, accounting reconciliation, load test, disaster recovery test, legal sign-off, provider certification, monitoring, and controlled beta with limits.
+
+## 23. Decisions to finalize before coding
+
+- Target jurisdictions, license/registration status, and prohibited countries.
+- Custody model and where customer funds are held.
+- Supported currencies, payment rails, payout corridors, and provider SLAs.
+- Return model, source of performance, calculation basis, loss handling, and who approves results.
+- Minimum/maximum amounts, lock periods, early exit, reserve/liquidity policy, and settlement timing.
+- KYC tiers, AML provider, sanctions provider, retention, and manual review thresholds.
+- Referral qualification event, rate, holding/clawback period, and campaign rules.
+- Fee/tax rules and accounting chart of accounts.
+- Required languages, timezones, accessibility level, branding, and support hours.
+- MVP scope, reporting obligations, incident response owner, and launch success metrics.
