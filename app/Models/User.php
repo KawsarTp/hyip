@@ -10,12 +10,13 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status'])]
+#[Fillable(['name', 'email', 'password', 'role', 'status', 'referral_code', 'referred_by_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -34,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'role' => UserRole::class,
             'status' => AccountStatus::class,
+            'referred_by_id' => 'integer',
         ];
     }
 
@@ -80,5 +82,25 @@ class User extends Authenticatable implements MustVerifyEmail
     public function withdrawals(): HasMany
     {
         return $this->hasMany(Withdrawal::class);
+    }
+
+    public function investments(): HasMany
+    {
+        return $this->hasMany(Investment::class);
+    }
+
+    public function referredBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'referred_by_id');
+    }
+
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(self::class, 'referred_by_id');
+    }
+
+    public function referralCommissions(): HasMany
+    {
+        return $this->hasMany(ReferralCommission::class, 'referrer_id');
     }
 }

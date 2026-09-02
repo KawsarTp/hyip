@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
 use App\Http\Controllers\Admin\BankAccountController as AdminBankAccountController;
 use App\Http\Controllers\Admin\DepositController as AdminDepositController;
+use App\Http\Controllers\Admin\InvestmentController as AdminInvestmentController;
+use App\Http\Controllers\Admin\InvestmentPlanController as AdminInvestmentPlanController;
 use App\Http\Controllers\Admin\KycController as AdminKycController;
 use App\Http\Controllers\Admin\LedgerController as AdminLedgerController;
 use App\Http\Controllers\Admin\PaymentGatewayController as AdminPaymentGatewayController;
+use App\Http\Controllers\Admin\ReferralController as AdminReferralController;
 use App\Http\Controllers\Admin\WithdrawalController as AdminWithdrawalController;
 use App\Http\Controllers\Admin\WithdrawalMethodController as AdminWithdrawalMethodController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -15,14 +19,18 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\DepositController;
+use App\Http\Controllers\InvestmentController;
 use App\Http\Controllers\KycController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\ProviderWebhookController;
+use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WithdrawalController;
+use App\Http\Middleware\ApplyReferralAttribution;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
+Route::get('/ref/{code}', [ReferralController::class, 'visit'])->name('referrals.visit');
 Route::middleware('guest')->group(function (): void {
     Route::view('/login', 'auth.login')->name('login');
     Route::view('/register', 'auth.register')->name('register');
@@ -41,7 +49,7 @@ Route::middleware('guest')->group(function (): void {
         ->name('password.update');
 });
 
-Route::middleware('auth')->group(function (): void {
+Route::middleware(['auth', ApplyReferralAttribution::class])->group(function (): void {
     Route::view('/dashboard', 'dashboard')->name('dashboard');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
@@ -54,6 +62,13 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/withdrawals', [WithdrawalController::class, 'store'])->name('withdrawals.store');
     Route::get('/withdrawals/{withdrawal}', [WithdrawalController::class, 'show'])->name('withdrawals.show');
     Route::patch('/withdrawals/{withdrawal}/cancel', [WithdrawalController::class, 'cancel'])->name('withdrawals.cancel');
+    Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
+    Route::post('/referrals/claim', [ReferralController::class, 'claim'])->name('referrals.claim');
+    Route::get('/investments/plans', [InvestmentController::class, 'plans'])->name('investment-plans.index');
+    Route::get('/investments', [InvestmentController::class, 'index'])->name('investments.index');
+    Route::get('/investments/create/{investmentPlan}', [InvestmentController::class, 'create'])->name('investments.create');
+    Route::post('/investments', [InvestmentController::class, 'store'])->name('investments.store');
+    Route::get('/investments/{investment}', [InvestmentController::class, 'show'])->name('investments.show');
     Route::get('/kyc', [KycController::class, 'edit'])->name('kyc.edit');
     Route::post('/kyc', [KycController::class, 'update'])->name('kyc.update');
     Route::get('/verify-email', EmailVerificationPromptController::class)->name('verification.notice');
@@ -64,7 +79,7 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('throttle:6,1')
         ->name('verification.send');
 
-    Route::middleware('admin')->prefix('admin')->group(function (): void {
+    Route::middleware(['admin', 'audit.admin'])->prefix('admin')->group(function (): void {
         Route::view('/', 'admin.dashboard')->name('admin.dashboard');
         Route::get('/deposits', [AdminDepositController::class, 'index'])->name('admin.deposits.index');
         Route::get('/deposits/{deposit}', [AdminDepositController::class, 'show'])->name('admin.deposits.show');
@@ -72,6 +87,21 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/withdrawals', [AdminWithdrawalController::class, 'index'])->name('admin.withdrawals.index');
         Route::get('/withdrawals/{withdrawal}', [AdminWithdrawalController::class, 'show'])->name('admin.withdrawals.show');
         Route::patch('/withdrawals/{withdrawal}', [AdminWithdrawalController::class, 'review'])->name('admin.withdrawals.review');
+        Route::get('/investment-plans', [AdminInvestmentPlanController::class, 'index'])->name('admin.investment-plans.index');
+        Route::get('/investment-plans/create', [AdminInvestmentPlanController::class, 'create'])->name('admin.investment-plans.create');
+        Route::post('/investment-plans', [AdminInvestmentPlanController::class, 'store'])->name('admin.investment-plans.store');
+        Route::get('/investment-plans/{investmentPlan}/edit', [AdminInvestmentPlanController::class, 'edit'])->name('admin.investment-plans.edit');
+        Route::patch('/investment-plans/{investmentPlan}', [AdminInvestmentPlanController::class, 'update'])->name('admin.investment-plans.update');
+        Route::get('/investments', [AdminInvestmentController::class, 'index'])->name('admin.investments.index');
+        Route::get('/investments/{investment}', [AdminInvestmentController::class, 'show'])->name('admin.investments.show');
+        Route::patch('/investments/{investment}/calculate-return', [AdminInvestmentController::class, 'calculate'])->name('admin.investments.calculate');
+        Route::patch('/investments/{investment}/mature', [AdminInvestmentController::class, 'mature'])->name('admin.investments.mature');
+        Route::patch('/investments/{investment}/complete', [AdminInvestmentController::class, 'complete'])->name('admin.investments.complete');
+        Route::patch('/investment-returns/{investmentReturn}', [AdminInvestmentController::class, 'reviewReturn'])->name('admin.investment-returns.review');
+        Route::get('/referrals', [AdminReferralController::class, 'index'])->name('admin.referrals.index');
+        Route::get('/referrals/settings', [AdminReferralController::class, 'settings'])->name('admin.referrals.settings');
+        Route::patch('/referrals/settings', [AdminReferralController::class, 'updateSettings'])->name('admin.referrals.settings.update');
+        Route::patch('/referrals/{referralCommission}', [AdminReferralController::class, 'review'])->name('admin.referrals.review');
         Route::get('/withdrawal-methods', [AdminWithdrawalMethodController::class, 'index'])->name('admin.withdrawal-methods.index');
         Route::get('/withdrawal-methods/create', [AdminWithdrawalMethodController::class, 'create'])->name('admin.withdrawal-methods.create');
         Route::post('/withdrawal-methods', [AdminWithdrawalMethodController::class, 'store'])->name('admin.withdrawal-methods.store');
@@ -89,6 +119,7 @@ Route::middleware('auth')->group(function (): void {
         Route::patch('/bank-accounts/{bankAccount}', [AdminBankAccountController::class, 'update'])->name('admin.bank-accounts.update');
         Route::delete('/bank-accounts/{bankAccount}', [AdminBankAccountController::class, 'destroy'])->name('admin.bank-accounts.destroy');
         Route::get('/ledger', [AdminLedgerController::class, 'index'])->name('admin.ledger.index');
+        Route::get('/audit', [AdminAuditLogController::class, 'index'])->name('admin.audit.index');
         Route::get('/kyc', [AdminKycController::class, 'index'])->name('admin.kyc.index');
         Route::get('/kyc/{kycProfile}', [AdminKycController::class, 'show'])->name('admin.kyc.show');
         Route::patch('/kyc/{kycProfile}', [AdminKycController::class, 'update'])->name('admin.kyc.update');

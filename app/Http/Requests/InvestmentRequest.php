@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\KycStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class InvestmentRequest extends FormRequest
 {
@@ -12,7 +14,9 @@ class InvestmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return $this->user()?->isActive() === true
+            && $this->user()?->hasVerifiedEmail() === true
+            && $this->user()?->kycProfile?->status === KycStatus::Verified;
     }
 
     /**
@@ -23,7 +27,9 @@ class InvestmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'investment_plan_id' => ['required', 'integer', Rule::exists('investment_plans', 'id')],
+            'amount' => ['required', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
+            'risk_acknowledged' => ['accepted'],
         ];
     }
 }

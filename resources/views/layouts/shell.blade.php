@@ -11,23 +11,26 @@
         ? [
             ['key' => 'overview', 'label' => 'Overview', 'icon' => 'grid', 'href' => route('admin.dashboard')],
             ['key' => 'users', 'label' => 'Users', 'icon' => 'users', 'href' => '#'],
-            ['key' => 'investments', 'label' => 'Investments', 'icon' => 'briefcase', 'href' => '#'],
+            ['key' => 'investments', 'label' => 'Investments', 'icon' => 'briefcase', 'href' => route('admin.investments.index')],
+            ['key' => 'plans', 'label' => 'Investment plans', 'icon' => 'spark', 'href' => route('admin.investment-plans.index')],
+            ['key' => 'referrals', 'label' => 'Referrals', 'icon' => 'users', 'href' => route('admin.referrals.index')],
             ['key' => 'deposits', 'label' => 'Deposits', 'icon' => 'arrow-down', 'href' => route('admin.deposits.index')],
             ['key' => 'payouts', 'label' => 'Payouts', 'icon' => 'arrow-up', 'href' => route('admin.withdrawals.index')],
             ['key' => 'compliance', 'label' => 'Compliance', 'icon' => 'shield', 'href' => route('admin.kyc.index'), 'badge' => '3'],
             ['key' => 'ledger', 'label' => 'Ledger', 'icon' => 'receipt', 'href' => route('admin.ledger.index')],
+            ['key' => 'audit', 'label' => 'Audit logs', 'icon' => 'shield', 'href' => route('admin.audit.index')],
             ['key' => 'payment-gateways', 'label' => 'Payment methods', 'icon' => 'settings', 'href' => route('admin.payment-gateways.index')],
             ['key' => 'withdrawal-methods', 'label' => 'Payout methods', 'icon' => 'arrow-up', 'href' => route('admin.withdrawal-methods.index')],
             ['key' => 'reports', 'label' => 'Reports', 'icon' => 'receipt', 'href' => '#'],
         ]
         : [
             ['key' => 'overview', 'label' => 'Overview', 'icon' => 'grid', 'href' => route('dashboard')],
-            ['key' => 'investments', 'label' => 'My investments', 'icon' => 'briefcase', 'href' => '#'],
+            ['key' => 'investments', 'label' => 'My investments', 'icon' => 'briefcase', 'href' => route('investments.index')],
             ['key' => 'wallet', 'label' => 'Wallet', 'icon' => 'wallet', 'href' => route('wallet.index')],
             ['key' => 'deposits', 'label' => 'Deposit funds', 'icon' => 'arrow-down', 'href' => route('deposits.create')],
             ['key' => 'withdrawals', 'label' => 'Withdraw funds', 'icon' => 'arrow-up', 'href' => route('withdrawals.create')],
             ['key' => 'activity', 'label' => 'Activity', 'icon' => 'activity', 'href' => '#'],
-            ['key' => 'referrals', 'label' => 'Referrals', 'icon' => 'users', 'href' => '#'],
+            ['key' => 'referrals', 'label' => 'Referrals', 'icon' => 'users', 'href' => route('referrals.index')],
             ['key' => 'verification', 'label' => 'Verification', 'icon' => 'shield', 'href' => route('kyc.edit')],
         ];
 
