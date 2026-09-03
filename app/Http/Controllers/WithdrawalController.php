@@ -7,10 +7,13 @@ use App\Http\Requests\WithdrawalRequest;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Models\WithdrawalMethod;
+use App\Services\FeeService;
+use App\Services\LocalizationService;
 use App\Services\WalletService;
 use App\Services\WithdrawalService;
 use App\WalletType;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -28,18 +31,46 @@ class WithdrawalController extends Controller
         return view('withdrawals.index', compact('withdrawals'));
     }
 
-    public function create(Request $request, WalletService $walletService, WithdrawalService $withdrawalService): View
+    public function create(Request $request, WalletService $walletService, WithdrawalService $withdrawalService, LocalizationService $localization): View
     {
         /** @var User $user */
         $user = $request->user();
+        $currencies = $localization->enabledCurrencies();
+        $currency = $request->user()->currency_code ?: $localization->defaultCurrencyCode();
         $methods = WithdrawalMethod::query()
             ->where('is_enabled', true)
-            ->where('currency', 'USD')
+            ->whereIn('currency', $currencies->pluck('code'))
             ->orderBy('sort_order')
             ->get();
-        $availableWallet = $walletService->wallet($user, WalletType::Available);
+        $availableWallet = $walletService->wallet($user, WalletType::Available, $currency);
 
-        return view('withdrawals.create', compact('methods', 'availableWallet', 'withdrawalService'));
+        return view('withdrawals.create', compact('methods', 'availableWallet', 'withdrawalService', 'currencies', 'currency'));
+    }
+
+    public function quote(Request $request, FeeService $feeService): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
+            'currency' => ['required', 'string', 'size:3', 'uppercase'],
+            'withdrawal_method_id' => ['required', 'integer'],
+        ]);
+        $method = WithdrawalMethod::query()
+            ->whereKey($validated['withdrawal_method_id'])
+            ->where('is_enabled', true)
+            ->where('currency', $validated['currency'])
+            ->first();
+
+        if ($method === null) {
+            return response()->json(['message' => 'The selected payout method is unavailable.'], 422);
+        }
+
+        try {
+            $quote = $feeService->quote('withdrawal', $feeService->amountToMinor($validated['amount']), $validated['currency'], $method, $request->user()->kycProfile?->country);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json($quote + ['currency' => $validated['currency']]);
     }
 
     public function store(WithdrawalRequest $request, WithdrawalService $withdrawalService): RedirectResponse

@@ -1,4 +1,5 @@
 @php($plan = $plan ?? null)
+@php($currencies = $currencies ?? collect())
 
 @if ($errors->any())
     <div class="mt-6 rounded-xl border border-[#ffd8cf] bg-[#fff0ec] px-4 py-3 text-xs text-[#b94f3a]"><ul class="grid gap-1">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
@@ -13,7 +14,7 @@
     </div>
     <div><label for="description" class="text-[11px] font-semibold text-[#536078]">Plan terms and description</label><textarea id="description" name="description" rows="4" required class="mt-2 w-full rounded-xl border border-[#dfe5ec] bg-[#fbfcfe] px-3 py-3 text-xs outline-none focus:border-[#7668f6]" placeholder="Explain the strategy, risks, liquidity, and how projected returns are calculated.">{{ old('description', $plan?->description) }}</textarea></div>
     <div class="grid gap-5 sm:grid-cols-3">
-        <div><label for="currency" class="text-[11px] font-semibold text-[#536078]">Currency</label><input id="currency" name="currency" value="{{ old('currency', $plan?->currency ?? 'USD') }}" required maxlength="3" class="mt-2 w-full rounded-xl border border-[#dfe5ec] bg-[#fbfcfe] px-3 py-3 text-sm uppercase outline-none focus:border-[#7668f6]"></div>
+        <div><label for="currency" class="text-[11px] font-semibold text-[#536078]">Currency</label><select id="currency" name="currency" required class="mt-2 w-full rounded-xl border border-[#dfe5ec] bg-[#fbfcfe] px-3 py-3 text-sm uppercase outline-none focus:border-[#7668f6]">@foreach ($currencies as $currency)<option value="{{ $currency->code }}" @selected(old('currency', $plan?->currency ?? 'USD') === $currency->code)>{{ $currency->code }} · {{ $currency->name }}</option>@endforeach</select></div>
         <div><label for="risk_rating" class="text-[11px] font-semibold text-[#536078]">Risk rating</label><select id="risk_rating" name="risk_rating" required class="mt-2 w-full rounded-xl border border-[#dfe5ec] bg-[#fbfcfe] px-3 py-3 text-sm outline-none focus:border-[#7668f6]"><option @selected(old('risk_rating', $plan?->risk_rating) === 'Low')>Low</option><option @selected(old('risk_rating', $plan?->risk_rating) === 'Moderate')>Moderate</option><option @selected(old('risk_rating', $plan?->risk_rating) === 'High')>High</option></select></div>
         <div><label for="status" class="text-[11px] font-semibold text-[#536078]">Publication status</label><select id="status" name="status" required class="mt-2 w-full rounded-xl border border-[#dfe5ec] bg-[#fbfcfe] px-3 py-3 text-sm outline-none focus:border-[#7668f6]"><option value="draft" @selected(old('status', $plan?->status?->value) === 'draft')>Draft</option><option value="published" @selected(old('status', $plan?->status?->value) === 'published')>Published</option><option value="paused" @selected(old('status', $plan?->status?->value) === 'paused')>Paused</option><option value="retired" @selected(old('status', $plan?->status?->value) === 'retired')>Retired</option></select></div>
     </div>

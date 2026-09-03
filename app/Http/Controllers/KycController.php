@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\KycSubmissionRequest;
 use App\KycStatus;
 use App\Models\KycProfile;
+use App\Services\EmailNotificationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class KycController extends Controller
 {
@@ -19,14 +21,15 @@ class KycController extends Controller
         return view('kyc.edit', compact('profile'));
     }
 
-    public function update(KycSubmissionRequest $request): RedirectResponse
+    public function update(KycSubmissionRequest $request, EmailNotificationService $emailNotificationService): RedirectResponse
     {
         $validated = $request->validated();
         $document = $request->file('identity_document');
         $path = $document?->store('kyc-documents', 'local');
+        $submissionEventKey = (string) Str::uuid();
 
         try {
-            DB::transaction(function () use ($request, $validated, $path, $document): void {
+            DB::transaction(function () use ($request, $validated, $path, $document, $emailNotificationService, $submissionEventKey): void {
                 $profile = KycProfile::firstOrNew(['user_id' => $request->user()->id]);
                 $profile->fill([
                     'status' => KycStatus::InReview,
@@ -58,6 +61,16 @@ class KycController extends Controller
                         'status' => 'pending',
                     ]);
                 }
+
+                $emailNotificationService->queueForUser(
+                    $request->user(),
+                    'kyc_submitted',
+                    [
+                        'status' => KycStatus::InReview->value,
+                        'submission_reference' => $submissionEventKey,
+                    ],
+                    "kyc:{$profile->getKey()}:submitted:{$submissionEventKey}",
+                );
             });
         } catch (\Throwable $exception) {
             if ($path) {

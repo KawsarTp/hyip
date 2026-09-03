@@ -18,7 +18,7 @@ class InvestmentController extends Controller
 {
     public function plans(): View
     {
-        $plans = InvestmentPlan::query()->where('status', 'published')->where('currency', 'USD')->orderBy('sort_order')->get();
+        $plans = InvestmentPlan::query()->where('status', 'published')->orderBy('sort_order')->get();
 
         return view('investments.plans', compact('plans'));
     }

@@ -4,14 +4,16 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\EmailNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request, EmailNotificationService $emailNotificationService): RedirectResponse
     {
         $credentials = $request->safe()->only(['email', 'password']);
 
@@ -34,6 +36,16 @@ class AuthenticatedSessionController extends Controller
                 'email' => 'Your account is currently unavailable. Please contact support.',
             ]);
         }
+
+        $emailNotificationService->queueForUser(
+            $user,
+            'security_event',
+            [
+                'event' => 'Successful sign in',
+                'ip_address' => $request->ip(),
+            ],
+            "security:login:{$user->getKey()}:".Str::uuid(),
+        );
 
         return redirect()->intended($user->canAccessAdminArea() ? route('admin.dashboard') : route('dashboard'));
     }

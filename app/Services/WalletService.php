@@ -16,17 +16,19 @@ class WalletService
      *
      * @return Collection<int, Wallet>
      */
-    public function walletsFor(User $user, string $currency = 'USD'): Collection
+    public function walletsFor(User $user, ?string $currency = null): Collection
     {
+        $currency ??= $user->currency_code ?: app(LocalizationService::class)->defaultCurrencyCode();
+
         return new Collection(array_map(
             fn (WalletType $type): Wallet => $this->wallet($user, $type, $currency),
             WalletType::cases(),
         ));
     }
 
-    public function wallet(User $user, WalletType $type, string $currency = 'USD'): Wallet
+    public function wallet(User $user, WalletType $type, ?string $currency = null): Wallet
     {
-        $currency = strtoupper($currency);
+        $currency = strtoupper($currency ?: $user->currency_code ?: app(LocalizationService::class)->defaultCurrencyCode());
 
         if (! preg_match('/^[A-Z]{3}$/', $currency)) {
             throw new \InvalidArgumentException('Currency must be a three-letter ISO code.');

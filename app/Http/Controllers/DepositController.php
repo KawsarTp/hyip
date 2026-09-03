@@ -8,6 +8,7 @@ use App\Models\Deposit;
 use App\Models\PaymentGateway;
 use App\Models\User;
 use App\Services\DepositService;
+use App\Services\LocalizationService;
 use App\Services\PaymentGatewayManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,7 @@ class DepositController extends Controller
         return view('deposits.index', compact('deposits'));
     }
 
-    public function create(): View
+    public function create(LocalizationService $localization): View
     {
         $gateways = PaymentGateway::query()
             ->where('is_enabled', true)
@@ -33,7 +34,10 @@ class DepositController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        return view('deposits.create', compact('gateways'));
+        $currencies = $localization->enabledCurrencies();
+        $currency = auth()->user()->currency_code ?: $localization->defaultCurrencyCode();
+
+        return view('deposits.create', compact('gateways', 'currencies', 'currency'));
     }
 
     public function store(DepositRequest $request, DepositService $depositService, PaymentGatewayManager $gatewayManager): RedirectResponse

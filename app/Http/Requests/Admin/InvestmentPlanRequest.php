@@ -27,7 +27,7 @@ class InvestmentPlanRequest extends FormRequest
             'name' => ['required', 'string', 'max:120'],
             'slug' => ['required', 'string', 'max:140', 'alpha_dash', Rule::unique('investment_plans', 'slug')->ignore($this->route('investmentPlan'))],
             'description' => ['required', 'string', 'max:5000'],
-            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::in(['USD'])],
+            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::exists('currencies', 'code')->where('is_enabled', true)],
             'risk_rating' => ['required', 'string', 'max:30'],
             'minimum_amount' => ['required', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
             'maximum_amount' => ['nullable', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],

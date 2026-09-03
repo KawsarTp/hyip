@@ -8,11 +8,13 @@ use App\KycStatus;
 use App\Models\KycDocument;
 use App\Models\KycProfile;
 use App\Models\KycReview;
+use App\Services\EmailNotificationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\StreamedResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class KycController extends Controller
 {
@@ -34,12 +36,13 @@ class KycController extends Controller
         return view('admin.kyc.show', compact('kycProfile'));
     }
 
-    public function update(KycReviewRequest $request, KycProfile $kycProfile): RedirectResponse
+    public function update(KycReviewRequest $request, KycProfile $kycProfile, EmailNotificationService $emailNotificationService): RedirectResponse
     {
         $decision = KycStatus::from($request->string('decision')->toString());
         $notes = $request->string('review_notes')->trim()->toString() ?: null;
+        $reviewEventKey = (string) Str::uuid();
 
-        DB::transaction(function () use ($request, $kycProfile, $decision, $notes): void {
+        DB::transaction(function () use ($request, $kycProfile, $decision, $notes, $emailNotificationService, $reviewEventKey): void {
             KycReview::create([
                 'kyc_profile_id' => $kycProfile->id,
                 'reviewer_id' => $request->user()->id,
@@ -60,6 +63,18 @@ class KycController extends Controller
                 'reviewed_at' => now(),
                 'rejection_reason' => $decision === KycStatus::Verified ? null : $notes,
             ]);
+
+            $kycProfile->loadMissing('user');
+            $emailNotificationService->queueForUser(
+                $kycProfile->user,
+                $decision === KycStatus::Verified ? 'kyc_verified' : 'kyc_rejected',
+                [
+                    'status' => $decision->value,
+                    'review_notes' => $notes,
+                    'review_reference' => $reviewEventKey,
+                ],
+                "kyc:{$kycProfile->getKey()}:review:{$reviewEventKey}",
+            );
         });
 
         return redirect()->route('admin.kyc.show', $kycProfile)->with('status', 'KYC review updated.');

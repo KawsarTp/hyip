@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BankAccountRequest;
 use App\Models\BankAccount;
 use App\Models\PaymentGateway;
+use App\Services\LocalizationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 
@@ -18,11 +19,11 @@ class BankAccountController extends Controller
         return view('admin.bank-accounts.index', compact('accounts'));
     }
 
-    public function create(): View
+    public function create(LocalizationService $localization): View
     {
         $gateways = PaymentGateway::query()->where('driver', 'bank_transfer')->orderBy('name')->get();
 
-        return view('admin.bank-accounts.create', compact('gateways'));
+        return view('admin.bank-accounts.create', ['gateways' => $gateways, 'currencies' => $localization->enabledCurrencies()]);
     }
 
     public function store(BankAccountRequest $request): RedirectResponse
@@ -32,11 +33,11 @@ class BankAccountController extends Controller
         return redirect()->route('admin.bank-accounts.index')->with('status', 'Bank account added.');
     }
 
-    public function edit(BankAccount $bankAccount): View
+    public function edit(BankAccount $bankAccount, LocalizationService $localization): View
     {
         $gateways = PaymentGateway::query()->where('driver', 'bank_transfer')->orderBy('name')->get();
 
-        return view('admin.bank-accounts.edit', compact('bankAccount', 'gateways'));
+        return view('admin.bank-accounts.edit', ['bankAccount' => $bankAccount, 'gateways' => $gateways, 'currencies' => $localization->enabledCurrencies()]);
     }
 
     public function update(BankAccountRequest $request, BankAccount $bankAccount): RedirectResponse

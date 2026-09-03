@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\AccountStatus;
+use App\Services\EmailNotificationService;
 use App\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
@@ -15,8 +16,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status', 'referral_code', 'referred_by_id'])]
+#[Fillable(['name', 'email', 'password', 'role', 'status', 'locale', 'currency_code', 'referral_code', 'referred_by_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -35,6 +38,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'role' => UserRole::class,
             'status' => AccountStatus::class,
+            'locale' => 'string',
+            'currency_code' => 'string',
             'referred_by_id' => 'integer',
         ];
     }
@@ -52,6 +57,52 @@ class User extends Authenticatable implements MustVerifyEmail
             UserRole::Compliance,
             UserRole::Support,
         ], true);
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes((int) config('auth.verification.expire', 60)),
+            [
+                'id' => $this->getKey(),
+                'hash' => sha1($this->getEmailForVerification()),
+            ],
+        );
+
+        app(EmailNotificationService::class)->queueForUser(
+            $this,
+            'email_verification',
+            ['verification_url' => $verificationUrl],
+            "security:email-verification:{$this->getKey()}:".Str::uuid(),
+        );
+    }
+
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $resetUrl = route('password.reset', [
+            'token' => $token,
+            'email' => $this->getEmailForPasswordReset(),
+        ]);
+
+        app(EmailNotificationService::class)->queueForUser(
+            $this,
+            'password_reset',
+            ['reset_url' => $resetUrl],
+            "security:password-reset-request:{$this->getKey()}:".Str::uuid(),
+        );
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->role === UserRole::Admin) {
+            return true;
+        }
+
+        return RolePermission::query()
+            ->where('role', $this->role->value)
+            ->whereHas('permission', fn ($query) => $query->where('key', $permission))
+            ->exists();
     }
 
     public function kycProfile(): HasOne
@@ -102,5 +153,20 @@ class User extends Authenticatable implements MustVerifyEmail
     public function referralCommissions(): HasMany
     {
         return $this->hasMany(ReferralCommission::class, 'referrer_id');
+    }
+
+    public function supportTickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
+
+    public function assignedSupportTickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class, 'assigned_to_id');
+    }
+
+    public function supportTicketMessages(): HasMany
+    {
+        return $this->hasMany(SupportTicketMessage::class);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\WithdrawalMethodRequest;
 use App\Models\WithdrawalMethod;
+use App\Services\LocalizationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -18,9 +19,9 @@ class WithdrawalMethodController extends Controller
         return view('admin.withdrawal-methods.index', compact('methods'));
     }
 
-    public function create(): View
+    public function create(LocalizationService $localization): View
     {
-        return view('admin.withdrawal-methods.create');
+        return view('admin.withdrawal-methods.create', ['currencies' => $localization->enabledCurrencies()]);
     }
 
     public function store(WithdrawalMethodRequest $request): RedirectResponse
@@ -30,9 +31,9 @@ class WithdrawalMethodController extends Controller
         return redirect()->route('admin.withdrawal-methods.index')->with('status', 'Withdrawal method added.');
     }
 
-    public function edit(WithdrawalMethod $withdrawalMethod): View
+    public function edit(WithdrawalMethod $withdrawalMethod, LocalizationService $localization): View
     {
-        return view('admin.withdrawal-methods.edit', ['method' => $withdrawalMethod]);
+        return view('admin.withdrawal-methods.edit', ['method' => $withdrawalMethod, 'currencies' => $localization->enabledCurrencies()]);
     }
 
     public function update(WithdrawalMethodRequest $request, WithdrawalMethod $withdrawalMethod): RedirectResponse

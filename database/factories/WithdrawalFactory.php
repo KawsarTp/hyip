@@ -27,6 +27,7 @@ class WithdrawalFactory extends Factory
             'currency' => 'USD',
             'gross_amount_minor' => 10000,
             'fee_amount_minor' => 0,
+            'tax_amount_minor' => 0,
             'net_amount_minor' => 10000,
             'status' => WithdrawalStatus::Pending,
             'destination_details' => ['destination_address' => 'manual-destination'],

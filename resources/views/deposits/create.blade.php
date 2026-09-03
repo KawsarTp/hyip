@@ -16,7 +16,7 @@
                 @else
                     <form action="{{ route('deposits.store') }}" method="post" class="mt-8 grid gap-5">
                         @csrf
-                        <div><label for="amount" class="text-[11px] font-semibold text-[#536078]">Amount</label><div class="mt-2 flex items-center rounded-xl border border-[#dfe5ec] bg-[#fbfcfe] px-3 focus-within:border-[#7668f6]"><span class="text-sm font-semibold text-[#9aa5b7]">$</span><input id="amount" name="amount" value="{{ old('amount') }}" required inputmode="decimal" placeholder="0.00" class="w-full border-0 bg-transparent px-2 py-3 text-sm font-semibold outline-none ring-0" /></div></div>
+                        <div class="grid gap-5 sm:grid-cols-[1fr_180px]"><div><label for="amount" class="text-[11px] font-semibold text-[#536078]">Amount</label><div class="mt-2 flex items-center rounded-xl border border-[#dfe5ec] bg-[#fbfcfe] px-3 focus-within:border-[#7668f6]"><span id="deposit-symbol" class="text-sm font-semibold text-[#9aa5b7]">{{ $currencies->firstWhere('code', old('currency', $currency))?->symbol }}</span><input id="amount" name="amount" value="{{ old('amount') }}" required inputmode="decimal" placeholder="0.00" class="w-full border-0 bg-transparent px-2 py-3 text-sm font-semibold outline-none ring-0" /></div></div><div><label for="currency" class="text-[11px] font-semibold text-[#536078]">Currency</label><select id="currency" name="currency" required class="mt-2 w-full rounded-xl border border-[#dfe5ec] bg-[#fbfcfe] px-3 py-3 text-sm font-semibold uppercase outline-none focus:border-[#7668f6]">@foreach ($currencies as $availableCurrency)<option value="{{ $availableCurrency->code }}" data-symbol="{{ $availableCurrency->symbol }}" @selected(old('currency', $currency) === $availableCurrency->code)>{{ $availableCurrency->code }} · {{ $availableCurrency->name }}</option>@endforeach</select></div></div>
                         <div><p class="text-[11px] font-semibold text-[#536078]">Payment gateway</p><div class="mt-2 grid gap-3">
                             @foreach ($gateways as $gateway)
                                 <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#e2e7ef] bg-[#fbfcfe] p-4 transition has-[:checked]:border-[#7668f6] has-[:checked]:bg-[#f8f7ff]"><input type="radio" name="payment_gateway_id" value="{{ $gateway->id }}" @checked(old('payment_gateway_id', $gateways->first()->id) == $gateway->id) class="mt-1 border-[#cfd7e4] text-[#7668f6]"><span class="min-w-0 flex-1"><span class="flex items-center justify-between gap-3"><span class="text-sm font-semibold text-[#0a1324]">{{ $gateway->name }}</span><span class="rounded-full bg-[#eaf9f0] px-2 py-1 text-[9px] font-semibold text-[#36a675]">{{ $gateway->is_test_mode ? 'Test' : 'Live' }}</span></span><span class="mt-1 block text-[11px] capitalize text-[#7b879a]">{{ str($gateway->method)->replace('_', ' ')->title() }} · {{ $gateway->driver }}</span>
@@ -24,7 +24,6 @@
                                 </span></label>
                             @endforeach
                         </div></div>
-                        <input type="hidden" name="currency" value="USD">
                         <button class="mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0a1324] px-4 py-3.5 text-xs font-semibold text-white transition hover:bg-[#182942]">Create payment instructions <x-icon name="arrow-right" size="14" class="text-[#b9f7d2]" /></button>
                     </form>
                 @endif
@@ -32,4 +31,9 @@
             <aside class="rounded-[24px] bg-[#0a1324] p-6 text-white sm:p-8"><span class="grid h-10 w-10 place-items-center rounded-xl bg-[#b9f7d2] text-[#0a1324]"><x-icon name="shield" size="18" /></span><h3 class="mt-6 text-lg font-semibold">Protected by design.</h3><div class="mt-5 grid gap-4 text-xs leading-5 text-white/55"><p><span class="font-semibold text-white">1.</span> A unique payment reference is created for your selected gateway.</p><p><span class="font-semibold text-white">2.</span> The payment stays pending until the provider or finance team confirms it.</p><p><span class="font-semibold text-white">3.</span> Settlement posts one balanced ledger entry to your available wallet.</p></div><div class="mt-8 border-t border-white/10 pt-5 text-[11px] text-white/40">Never send funds without matching the instructions and reference on your deposit receipt.</div></aside>
         </div>
     </div>
+    <script>
+        document.getElementById('currency')?.addEventListener('change', (event) => {
+            document.getElementById('deposit-symbol').textContent = event.target.selectedOptions[0]?.dataset.symbol || '';
+        });
+    </script>
 @endcomponent

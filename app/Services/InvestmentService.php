@@ -24,6 +24,7 @@ class InvestmentService
         private readonly LedgerService $ledgerService,
         private readonly WalletService $walletService,
         private readonly ReferralService $referralService,
+        private readonly EmailNotificationService $emailNotificationService,
     ) {}
 
     public function create(User $user, InvestmentPlan $plan, string $amount): Investment
@@ -88,6 +89,18 @@ class InvestmentService
             $this->ledgerService->transfer($available, $locked, $amountMinor, $user, "investment:fund:{$investment->getKey()}");
             $plan->increment('current_invested_minor', $amountMinor);
             $this->referralService->createInvestmentCommission($investment);
+            $this->emailNotificationService->queueForUser(
+                $user,
+                'investment_activated',
+                [
+                    'amount' => $this->emailNotificationService->formatAmount($amountMinor, $currency),
+                    'currency' => $currency,
+                    'reference' => $investment->reference,
+                    'plan_name' => $plan->name,
+                    'maturity_at' => $maturityAt->toDateString(),
+                ],
+                "investment:{$investment->getKey()}:activated",
+            );
 
             return $investment->load('investmentPlan');
         });
@@ -149,6 +162,18 @@ class InvestmentService
                 'last_calculated_at' => $periodEnd,
                 'accrued_return_minor' => $investment->accrued_return_minor + $returnAmountMinor,
             ]);
+            $this->emailNotificationService->queueForUser(
+                $investment->user,
+                'return_posted',
+                [
+                    'amount' => $this->emailNotificationService->formatAmount($returnAmountMinor, $investment->currency),
+                    'currency' => $investment->currency,
+                    'reference' => $investment->reference,
+                    'period_start' => $periodStart->toDateString(),
+                    'period_end' => $periodEnd->toDateString(),
+                ],
+                "investment-return:{$investmentReturn->getKey()}:posted",
+            );
 
             return $investmentReturn;
         });

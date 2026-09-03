@@ -24,6 +24,7 @@ class DepositService
     public function __construct(
         private readonly LedgerService $ledgerService,
         private readonly WalletService $walletService,
+        private readonly EmailNotificationService $emailNotificationService,
     ) {}
 
     public function create(User $user, string $amount, string $currency, PaymentGateway $gateway, ?string $idempotencyKey = null): Deposit
@@ -89,7 +90,7 @@ class DepositService
                 'expires_at' => now()->addDay(),
             ]);
 
-            return Deposit::query()->create([
+            $deposit = Deposit::query()->create([
                 'user_id' => $user->getKey(),
                 'payment_intent_id' => $paymentIntent->getKey(),
                 'reference' => (string) Str::uuid(),
@@ -112,6 +113,19 @@ class DepositService
                     ],
                 ],
             ]);
+
+            $this->emailNotificationService->queueForUser(
+                $user,
+                'deposit_created',
+                [
+                    'amount' => $this->emailNotificationService->formatAmount($amountMinor, $currency),
+                    'currency' => $currency,
+                    'reference' => $deposit->reference,
+                ],
+                "deposit:{$deposit->getKey()}:created",
+            );
+
+            return $deposit;
         });
     }
 
@@ -142,6 +156,17 @@ class DepositService
                 'status' => PaymentIntentStatus::Failed,
                 'failure_reason' => $reason,
             ]);
+            $this->emailNotificationService->queueForUser(
+                $deposit->user,
+                'deposit_failed',
+                [
+                    'amount' => $this->emailNotificationService->formatAmount($deposit->amount_minor, $deposit->currency),
+                    'currency' => $deposit->currency,
+                    'reference' => $deposit->reference,
+                    'reason' => $reason,
+                ],
+                "deposit:{$deposit->getKey()}:failed",
+            );
 
             return $deposit->fresh(['paymentIntent']);
         });
@@ -213,6 +238,17 @@ class DepositService
 
                 $deposit->update(['status' => DepositStatus::Failed, 'rejection_reason' => $reason]);
                 $paymentIntent->update(['status' => PaymentIntentStatus::Failed, 'failure_reason' => $reason]);
+                $this->emailNotificationService->queueForUser(
+                    $deposit->user,
+                    'deposit_failed',
+                    [
+                        'amount' => $this->emailNotificationService->formatAmount($deposit->amount_minor, $deposit->currency),
+                        'currency' => $deposit->currency,
+                        'reference' => $deposit->reference,
+                        'reason' => $reason,
+                    ],
+                    "deposit:{$deposit->getKey()}:failed",
+                );
             }
 
             $event->update(['status' => 'processed', 'processed_at' => now()]);
@@ -271,6 +307,17 @@ class DepositService
         ]);
         $deposit->update(['status' => DepositStatus::Completed, 'external_reference' => $externalReference, 'settled_at' => now()]);
         $deposit->paymentIntent?->update(['status' => PaymentIntentStatus::Succeeded, 'succeeded_at' => now()]);
+        $this->emailNotificationService->queueForUser(
+            $deposit->user,
+            'deposit_settled',
+            [
+                'amount' => $this->emailNotificationService->formatAmount($deposit->amount_minor, $deposit->currency),
+                'currency' => $deposit->currency,
+                'reference' => $deposit->reference,
+                'external_reference' => $externalReference,
+            ],
+            "deposit:{$deposit->getKey()}:settled",
+        );
 
         return $deposit->fresh(['paymentIntent']);
     }

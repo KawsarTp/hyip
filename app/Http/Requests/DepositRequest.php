@@ -28,7 +28,7 @@ class DepositRequest extends FormRequest
     {
         return [
             'amount' => ['required', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
-            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::in(['USD'])],
+            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::exists('currencies', 'code')->where('is_enabled', true)],
             'payment_gateway_id' => ['required', 'integer', Rule::exists('payment_gateways', 'id')],
             'idempotency_key' => ['nullable', 'string', 'max:100', 'alpha_dash'],
         ];

@@ -33,7 +33,7 @@ class BankAccountRequest extends FormRequest
             'swift_code' => ['nullable', 'string', 'max:40'],
             'branch' => ['nullable', 'string', 'max:150'],
             'instructions' => ['nullable', 'string', 'max:3000'],
-            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::in(['USD'])],
+            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::exists('currencies', 'code')->where('is_enabled', true)],
             'is_enabled' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:10000'],
         ];

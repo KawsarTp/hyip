@@ -26,7 +26,7 @@ class WithdrawalMethodRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:100'],
             'method' => ['required', Rule::in(['bank_transfer', 'crypto', 'paypal', 'card', 'manual'])],
-            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::in(['USD'])],
+            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::exists('currencies', 'code')->where('is_enabled', true)],
             'instructions' => ['required', 'string', 'max:3000'],
             'destination_label' => ['required', 'string', 'max:100'],
             'minimum_amount' => ['required', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],

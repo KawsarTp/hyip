@@ -17,7 +17,9 @@ class WithdrawalService
 {
     public function __construct(
         private readonly LedgerService $ledgerService,
+        private readonly FeeService $feeService,
         private readonly WalletService $walletService,
+        private readonly EmailNotificationService $emailNotificationService,
     ) {}
 
     /**
@@ -39,9 +41,12 @@ class WithdrawalService
             throw new InvalidArgumentException('The withdrawal amount is outside this method’s allowed limits.');
         }
 
-        [$feeMinor, $netMinor] = $this->quote($amountMinor, $method);
+        $quote = $this->quote($amountMinor, $method, $currency, $user->kycProfile?->country);
+        $feeMinor = $quote['fee_minor'];
+        $taxMinor = $quote['tax_minor'];
+        $netMinor = $quote['net_minor'];
 
-        return DB::transaction(function () use ($user, $amountMinor, $currency, $method, $destinationDetails, $idempotencyKey, $feeMinor, $netMinor): Withdrawal {
+        return DB::transaction(function () use ($user, $amountMinor, $currency, $method, $destinationDetails, $idempotencyKey, $feeMinor, $taxMinor, $netMinor, $quote): Withdrawal {
             $existing = Withdrawal::query()->where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
 
             if ($existing !== null) {
@@ -60,6 +65,7 @@ class WithdrawalService
                 'currency' => $currency,
                 'gross_amount_minor' => $amountMinor,
                 'fee_amount_minor' => $feeMinor,
+                'tax_amount_minor' => $taxMinor,
                 'net_amount_minor' => $netMinor,
                 'status' => 'pending',
                 'destination_details' => $destinationDetails,
@@ -68,30 +74,39 @@ class WithdrawalService
                     'method_name' => $method->name,
                     'fee_fixed_minor' => $method->fee_fixed_minor,
                     'fee_percent_bps' => $method->fee_percent_bps,
+                    'fee_rule_id' => $quote['fee_rule_id'],
+                    'fee_rule_name' => $quote['fee_rule_name'],
+                    'tax_basis' => $quote['tax_basis'],
                 ],
             ]);
 
             $available = $this->walletService->wallet($user, WalletType::Available, $currency);
             $pending = $this->walletService->wallet($user, WalletType::Pending, $currency);
             $this->ledgerService->transfer($available, $pending, $amountMinor, $user, "withdrawal:reserve:{$withdrawal->getKey()}");
+            $this->emailNotificationService->queueForUser(
+                $user,
+                'payout_requested',
+                [
+                    'amount' => $this->emailNotificationService->formatAmount($netMinor, $currency),
+                    'gross_amount' => $this->emailNotificationService->formatAmount($amountMinor, $currency),
+                    'fee' => $this->emailNotificationService->formatAmount($feeMinor, $currency),
+                    'tax' => $this->emailNotificationService->formatAmount($taxMinor, $currency),
+                    'currency' => $currency,
+                    'reference' => $withdrawal->reference,
+                ],
+                "withdrawal:{$withdrawal->getKey()}:requested",
+            );
 
             return $withdrawal;
         });
     }
 
     /**
-     * @return array{fee_minor: int, net_minor: int}
+     * @return array{fee_minor: int, tax_minor: int, net_minor: int, fee_rule_id: int|null, fee_rule_name: string|null, tax_basis: string}
      */
-    public function quote(int $grossMinor, WithdrawalMethod $method): array
+    public function quote(int $grossMinor, WithdrawalMethod $method, ?string $currency = null, ?string $country = null): array
     {
-        $feeMinor = $method->fee_fixed_minor + intdiv(($grossMinor * $method->fee_percent_bps) + 5000, 10000);
-        $netMinor = $grossMinor - $feeMinor;
-
-        if ($netMinor <= 0) {
-            throw new InvalidArgumentException('The withdrawal fee must be lower than the requested amount.');
-        }
-
-        return ['fee_minor' => $feeMinor, 'net_minor' => $netMinor];
+        return $this->feeService->quote('withdrawal', $grossMinor, $currency ?? $method->currency, $method, $country);
     }
 
     public function approve(Withdrawal $withdrawal, int $actorId, ?string $notes = null): Withdrawal
@@ -109,6 +124,17 @@ class WithdrawalService
                 'reviewed_at' => now(),
                 'metadata' => array_merge($withdrawal->metadata ?? [], ['review_notes' => $notes]),
             ]);
+            $this->emailNotificationService->queueForUser(
+                $withdrawal->user,
+                'payout_approved',
+                [
+                    'amount' => $this->emailNotificationService->formatAmount($withdrawal->net_amount_minor, $withdrawal->currency),
+                    'currency' => $withdrawal->currency,
+                    'reference' => $withdrawal->reference,
+                    'review_notes' => $notes,
+                ],
+                "withdrawal:{$withdrawal->getKey()}:approved",
+            );
 
             return $withdrawal->fresh(['user', 'withdrawalMethod']);
         });
@@ -130,6 +156,17 @@ class WithdrawalService
                 'reviewed_at' => now(),
                 'rejection_reason' => $reason,
             ]);
+            $this->emailNotificationService->queueForUser(
+                $withdrawal->user,
+                'payout_failed',
+                [
+                    'amount' => $this->emailNotificationService->formatAmount($withdrawal->net_amount_minor, $withdrawal->currency),
+                    'currency' => $withdrawal->currency,
+                    'reference' => $withdrawal->reference,
+                    'reason' => $reason,
+                ],
+                "withdrawal:{$withdrawal->getKey()}:failed",
+            );
 
             return $withdrawal->fresh(['user', 'withdrawalMethod']);
         });
@@ -151,19 +188,29 @@ class WithdrawalService
                 $withdrawal->currency,
                 LedgerAccountType::Asset,
             );
-            $feeAccount = $this->ledgerService->systemAccount(
-                "revenue:withdrawal-fees:{$withdrawal->currency}",
-                'Withdrawal fee revenue',
-                $withdrawal->currency,
-                LedgerAccountType::Revenue,
-            );
             $lines = [
                 ['account_id' => $pending->ledger_account_id, 'debit_minor' => $withdrawal->gross_amount_minor, 'description' => 'Release withdrawal reservation'],
                 ['account_id' => $payoutAccount->getKey(), 'credit_minor' => $withdrawal->net_amount_minor, 'description' => 'Manual payout sent to destination'],
             ];
 
             if ($withdrawal->fee_amount_minor > 0) {
+                $feeAccount = $this->ledgerService->systemAccount(
+                    "revenue:withdrawal-fees:{$withdrawal->currency}",
+                    'Withdrawal fee revenue',
+                    $withdrawal->currency,
+                    LedgerAccountType::Revenue,
+                );
                 $lines[] = ['account_id' => $feeAccount->getKey(), 'credit_minor' => $withdrawal->fee_amount_minor, 'description' => 'Withdrawal processing fee'];
+            }
+
+            if ($withdrawal->tax_amount_minor > 0) {
+                $taxAccount = $this->ledgerService->systemAccount(
+                    "tax:withdrawal:{$withdrawal->currency}",
+                    'Withdrawal tax payable',
+                    $withdrawal->currency,
+                    LedgerAccountType::Liability,
+                );
+                $lines[] = ['account_id' => $taxAccount->getKey(), 'credit_minor' => $withdrawal->tax_amount_minor, 'description' => 'Withdrawal tax payable'];
             }
 
             $this->ledgerService->post([
@@ -183,6 +230,17 @@ class WithdrawalService
                 'reviewed_at' => $withdrawal->reviewed_at ?? now(),
                 'completed_at' => now(),
             ]);
+            $this->emailNotificationService->queueForUser(
+                $withdrawal->user,
+                'payout_completed',
+                [
+                    'amount' => $this->emailNotificationService->formatAmount($withdrawal->net_amount_minor, $withdrawal->currency),
+                    'currency' => $withdrawal->currency,
+                    'reference' => $withdrawal->reference,
+                    'external_reference' => $externalReference,
+                ],
+                "withdrawal:{$withdrawal->getKey()}:completed",
+            );
 
             return $withdrawal->fresh(['user', 'withdrawalMethod']);
         });

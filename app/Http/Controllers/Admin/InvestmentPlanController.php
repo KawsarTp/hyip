@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\InvestmentPlanRequest;
 use App\Models\InvestmentPlan;
+use App\Services\LocalizationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -18,9 +19,9 @@ class InvestmentPlanController extends Controller
         return view('admin.investment-plans.index', compact('plans'));
     }
 
-    public function create(): View
+    public function create(LocalizationService $localization): View
     {
-        return view('admin.investment-plans.create');
+        return view('admin.investment-plans.create', ['currencies' => $localization->enabledCurrencies()]);
     }
 
     public function store(InvestmentPlanRequest $request): RedirectResponse
@@ -30,9 +31,9 @@ class InvestmentPlanController extends Controller
         return redirect()->route('admin.investment-plans.index')->with('status', 'Investment plan created.');
     }
 
-    public function edit(InvestmentPlan $investmentPlan): View
+    public function edit(InvestmentPlan $investmentPlan, LocalizationService $localization): View
     {
-        return view('admin.investment-plans.edit', ['plan' => $investmentPlan]);
+        return view('admin.investment-plans.edit', ['plan' => $investmentPlan, 'currencies' => $localization->enabledCurrencies()]);
     }
 
     public function update(InvestmentPlanRequest $request, InvestmentPlan $investmentPlan): RedirectResponse

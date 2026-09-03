@@ -28,7 +28,7 @@ class WithdrawalRequest extends FormRequest
     {
         return [
             'amount' => ['required', 'regex:/^\d{1,12}(\.\d{1,2})?$/'],
-            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::in(['USD'])],
+            'currency' => ['required', 'string', 'size:3', 'uppercase', Rule::exists('currencies', 'code')->where('is_enabled', true)],
             'withdrawal_method_id' => ['required', 'integer', Rule::exists('withdrawal_methods', 'id')],
             'destination_name' => ['required', 'string', 'max:120'],
             'destination_address' => ['required', 'string', 'max:255'],
